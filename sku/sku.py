@@ -64,12 +64,12 @@ def get_feature_names(transformer):
 
 # similar to KBinsDiscretizer but with nan support 
 class NKBinsDiscretizer(BaseEstimator):
-    def __init__(self,n_bins = 5, strategy = "uniform"):
+    def __init__(self,n_bins = 5, strategy = "uniform", label_mode = "range"):
         self.bins = {}
         self.names = {}
         self._n_bins = n_bins + 1
         self._strategy = strategy
-    
+        self._label_mode = label_mode
     def _iterator_pd_np(self, x):
         if isinstance(x,pd.core.frame.DataFrame):
             for column in x:
@@ -82,17 +82,22 @@ class NKBinsDiscretizer(BaseEstimator):
         for i,column in enumerate(self._iterator_pd_np(X)):
             not_nan_array = column[~np.isnan(column)]
             if self._strategy == "uniform":
-                self.bins[i] = np.linspace(not_nan_array.min() - 0.0001, not_nan_array.max(), self._n_bins)
+                self.bins[i] = np.linspace(not_nan_array.min(), not_nan_array.max(), self._n_bins)
             else:
                 self.bins[i] = np.unique(np.percentile(not_nan_array,np.linspace(0, 100, self._n_bins)))
-                self.bins[i] -= 0.0001 
                 
             self.names[i] = np.array(["[{} - {})".format(a,b) for a,b in zip(self.bins[i][:-1],self.bins[i][1:])]  + ["nan"])
 
     def transform(self, X, y=None, *args, **kwargs):
         X2 = []
+        
         for i,column in enumerate(self._iterator_pd_np(X)):
-            X2.append(self.names[i][np.digitize(column, self.bins[i], right = True) -1])
+            bins = self.bins[i].copy()
+            bins[0] -= 0.001
+            digitized = np.digitize(column, bins, right = True)
+            if not self._label_mode == "ordinal":
+                digitized = self.names[i][digitized -1]
+            X2.append(digitized)
         
         X2 = np.array(X2).T
         if isinstance(X,pd.core.frame.DataFrame):
