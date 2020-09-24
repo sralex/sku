@@ -80,13 +80,17 @@ class NKBinsDiscretizer(BaseEstimator):
             
     def fit(self, X, y=None, *args, **kwargs):
         for i,column in enumerate(self._iterator_pd_np(X)):
-            not_nan_array = column[~np.isnan(column)]
+            is_nan = np.isnan(column)
+            not_nan_array = column[~is_nan]
             if self._strategy == "uniform":
                 self.bins[i] = np.linspace(not_nan_array.min(), not_nan_array.max(), self._n_bins)
             else:
                 self.bins[i] = np.unique(np.percentile(not_nan_array,np.linspace(0, 100, self._n_bins)))
                 
-            self.names[i] = np.array(["[{} - {})".format(a,b) for a,b in zip(self.bins[i][:-1],self.bins[i][1:])]  + ["nan"])
+            self.names[i] = ["[{} - {})".format(a,b) for a,b in zip(self.bins[i][:-1],self.bins[i][1:])]
+
+            self.names[i] = np.array(self.names[i] + ["nan"] if is_nan.sum() > 0 else self.names[i])
+
 
     def transform(self, X, y=None, *args, **kwargs):
         X2 = []
