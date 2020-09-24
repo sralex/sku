@@ -9,6 +9,8 @@ setup(name='sku',
       packages=['sku'],
       python_requires='>=3.7',
       install_requires=[
-          'scikit-learn==0.23.1',
+          'scikit-learn>=0.23.1',
+          'numpy>=1.19.1',
+          'pandas>=1.1.0',
       ],
       zip_safe=False)
