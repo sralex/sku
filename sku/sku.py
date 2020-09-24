@@ -70,7 +70,7 @@ class NKBinsDiscretizer(BaseEstimator):
         self._n_bins = n_bins + 1
         self._strategy = strategy
     
-    def iterator_pd_np(self, x):
+    def _iterator_pd_np(self, x):
         if isinstance(x,pd.core.frame.DataFrame):
             for column in x:
                 yield x.loc[:,column]
@@ -79,7 +79,7 @@ class NKBinsDiscretizer(BaseEstimator):
                 yield column
             
     def fit(self, X, y=None, *args, **kwargs):
-        for i,column in enumerate(self.iterator_pd_np(X)):
+        for i,column in enumerate(self._iterator_pd_np(X)):
             not_nan_array = column[~np.isnan(column)]
             if self._strategy == "uniform":
                 self.bins[i] = np.linspace(not_nan_array.min() - 0.0001, not_nan_array.max(), self._n_bins)
@@ -91,7 +91,7 @@ class NKBinsDiscretizer(BaseEstimator):
 
     def transform(self, X, y=None, *args, **kwargs):
         X2 = []
-        for i,column in enumerate(self.iterator_pd_np(X)):
+        for i,column in enumerate(self._iterator_pd_np(X)):
             X2.append(self.names[i][np.digitize(column, self.bins[i], right = True) -1])
         
         X2 = np.array(X2).T
