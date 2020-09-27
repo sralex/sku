@@ -4,11 +4,9 @@ import numpy as np
 from sklearn.preprocessing import KBinsDiscretizer
 
 def get_bins_sku(data,n_bins,strategy):
-
     nan_transformer = NKBinsDiscretizer(n_bins = n_bins,strategy=strategy)
     nan_transformer.fit(data)
-
-    return nan_transformer.bins[0] #np.alltrue(np.round(bins_sku_uniform,2) == np.round(bins_sklearn_uniform,2))
+    return nan_transformer.bins_[0] #np.alltrue(np.round(bins_sku_uniform,2) == np.round(bins_sklearn_uniform,2))
 
 def get_bins_sklearn(data,n_bins,strategy):
     
@@ -22,7 +20,7 @@ def get_num_names_sku(data,n_bins,strategy):
     nan_transformer = NKBinsDiscretizer(n_bins = n_bins,strategy=strategy)
     nan_transformer.fit(data)
 
-    return nan_transformer.names[0].shape[0] #np.alltrue(np.round(bins_sku_uniform,2) == np.round(bins_sklearn_uniform,2))
+    return nan_transformer.names_[0].shape[0] #np.alltrue(np.round(bins_sku_uniform,2) == np.round(bins_sklearn_uniform,2))
 
 def get_num_names_sklearn(data,n_bins,strategy):
     
@@ -66,7 +64,7 @@ class TestNKBinsDiscretizer(TestCase):
         transformer = NKBinsDiscretizer(n_bins = 5)
         transformer.fit(self.data)
         transformer.transform(self.data)
-        self.assertEqual(transformer.bins[0].shape[0],6)
+        self.assertEqual(transformer.bins_[0].shape[0],6)
 
     def test_num_bins_uniform(self):
 

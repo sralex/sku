@@ -1,7 +1,8 @@
 from sklearn.pipeline import Pipeline
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_selection import SelectorMixin
-from sklearn.base import BaseEstimator
+from sklearn.utils.validation import  check_is_fitted
+from sklearn.base import BaseEstimator, TransformerMixin
 import pandas as pd
 import numpy as np
 
@@ -63,13 +64,21 @@ def get_feature_names(transformer):
     return list(output_features.keys())
 
 # similar to KBinsDiscretizer but with nan support 
-class NKBinsDiscretizer(BaseEstimator):
+#https://scikit-learn.org/stable/developers/develop.html
+class NKBinsDiscretizer(BaseEstimator,TransformerMixin):
     def __init__(self,n_bins = 5, strategy = "uniform", label_mode = "range"):
-        self.bins = {}
-        self.names = {}
-        self._n_bins = n_bins + 1
+        self._n_bins = n_bins
         self._strategy = strategy
         self._label_mode = label_mode
+
+    def get_params(self, deep=True):
+        return {"n_bins": self._n_bins, "strategy": self._strategy, "label_mode": self._label_mode}
+    
+    def set_params(self, **parameters):
+        for parameter, value in parameters.items():
+            setattr(self, "_{}".format(parameter), value)
+        return self
+
     def _iterator_pd_np(self, x):
         if isinstance(x,pd.core.frame.DataFrame):
             for column in x:
@@ -79,31 +88,42 @@ class NKBinsDiscretizer(BaseEstimator):
                 yield column
             
     def fit(self, X, y=None, *args, **kwargs):
+        
+        self.bins_ = {}
+        self.names_ = {}
+        self.n_bins_ = self._n_bins + 1 if self._n_bins != None else 6
         for i,column in enumerate(self._iterator_pd_np(X)):
             is_nan = np.isnan(column)
             not_nan_array = column[~is_nan]
             if self._strategy == "uniform":
-                self.bins[i] = np.linspace(not_nan_array.min(), not_nan_array.max(), self._n_bins)
+                self.bins_[i] = np.linspace(not_nan_array.min(), not_nan_array.max(), self.n_bins_)
             else:
-                self.bins[i] = np.unique(np.percentile(not_nan_array,np.linspace(0, 100, self._n_bins)))
+                self.bins_[i] = np.unique(np.percentile(not_nan_array,np.linspace(0, 100, self.n_bins_)))
                 
-            self.names[i] = ["[{} - {})".format(a,b) for a,b in zip(self.bins[i][:-1],self.bins[i][1:])]
+            self.names_[i] = ["[{} - {})".format(a,b) for a,b in zip(self.bins_[i][:-1],self.bins_[i][1:])]
 
-            self.names[i] = np.array(self.names[i] + ["nan"] if is_nan.sum() > 0 else self.names[i])
-
-
+            self.names_[i] = np.array(self.names_[i] + ["nan"] if is_nan.sum() > 0 else self.names_[i])
+        return self
+    
     def transform(self, X, y=None, *args, **kwargs):
+        
+        check_is_fitted(self)
+        
         X2 = []
         
         for i,column in enumerate(self._iterator_pd_np(X)):
-            bins = self.bins[i].copy()
+            bins = self.bins_[i].copy()
             bins[0] -= 0.001
             digitized = np.digitize(column, bins, right = True)
             if not self._label_mode == "ordinal":
-                digitized = self.names[i][digitized -1]
+                digitized = self.names_[i][digitized -1]
             X2.append(digitized)
         
         X2 = np.array(X2).T
         if isinstance(X,pd.core.frame.DataFrame):
             X2 = pd.DataFrame(X2,columns=X.columns)
         return X2
+    
+    def fit_transform(self, X, y=None, *args, **kwargs):
+        self = self.fit(X)
+        return self.transform(X)
