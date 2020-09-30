@@ -1,7 +1,7 @@
 from sklearn.pipeline import Pipeline
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_selection import SelectorMixin
-from sklearn.utils.validation import  check_is_fitted
+from sklearn.utils.validation import  check_is_fitted, FLOAT_DTYPES, check_array, _deprecate_positional_args
 from sklearn.base import BaseEstimator, TransformerMixin
 import pandas as pd
 import numpy as np
@@ -9,7 +9,7 @@ import numpy as np
 # inspired on
 # https://stackoverflow.com/questions/57528350/can-you-consistently-keep-track-of-column-labels-using-sklearns-transformer-api
 def get_feature_names(transformer):
-    feature_names_in = transformer._feature_names_in
+    feature_names_in = transformer.feature_names_in
     output_features = {}
     for name, estimator, features in transformer.transformers_:
         if name != "remainder":
@@ -66,36 +66,41 @@ def get_feature_names(transformer):
 # similar to KBinsDiscretizer but with nan support 
 #https://scikit-learn.org/stable/developers/develop.html
 class NKBinsDiscretizer(BaseEstimator,TransformerMixin):
+
+    @_deprecate_positional_args
     def __init__(self,n_bins = 5, strategy = "uniform", label_mode = "range"):
-        self._n_bins = n_bins
-        self._strategy = strategy
-        self._label_mode = label_mode
+        self.n_bins = n_bins
+        self.strategy = strategy
+        self.label_mode = label_mode
 
-    def get_params(self, deep=True):
-        return {"n_bins": self._n_bins, "strategy": self._strategy, "label_mode": self._label_mode}
-    
-    def set_params(self, **parameters):
-        for parameter, value in parameters.items():
-            setattr(self, "_{}".format(parameter), value)
-        return self
-
-    def _iterator_pd_np(self, x):
-        if isinstance(x,pd.core.frame.DataFrame):
-            for column in x:
-                yield x.loc[:,column]
-        else:
-            for column in x.T:
-                yield column
-            
+       
     def fit(self, X, y=None, *args, **kwargs):
-        
+
+        valid_label_mode = ('range', 'ordinal')
+        if self.label_mode not in valid_label_mode:
+            raise ValueError("Valid options for 'encode' are {}. "
+                             "Got encode={!r} instead."
+                             .format(valid_label_mode, self.label_mode))
+
+
+        valid_strategy = ('uniform', 'quantile')
+        if self.strategy not in valid_strategy:
+            raise ValueError("Valid options for 'strategy' are {}. "
+                             "Got strategy={!r} instead."
+                             .format(valid_strategy, self.strategy))
+
+
+        X = self._validate_data(X, dtype='numeric', force_all_finite=False)
+
         self.bins_ = {}
         self.names_ = {}
-        self.n_bins_ = self._n_bins + 1 if self._n_bins != None else 6
-        for i,column in enumerate(self._iterator_pd_np(X)):
+        self.n_bins_ = self.n_bins + 1 if self.n_bins != None else 6
+
+        for i in range(X.shape[1]):
+            column = X[:,i]
             is_nan = np.isnan(column)
             not_nan_array = column[~is_nan]
-            if self._strategy == "uniform":
+            if self.strategy == "uniform":
                 self.bins_[i] = np.linspace(not_nan_array.min(), not_nan_array.max(), self.n_bins_)
             else:
                 self.bins_[i] = np.unique(np.percentile(not_nan_array,np.linspace(0, 100, self.n_bins_)))
@@ -109,21 +114,15 @@ class NKBinsDiscretizer(BaseEstimator,TransformerMixin):
         
         check_is_fitted(self)
         
-        X2 = []
+        Xt = check_array(X, copy=True, dtype=object)
         
-        for i,column in enumerate(self._iterator_pd_np(X)):
+        for i in range(X.shape[1]):
+            column = X[:,i]
             bins = self.bins_[i].copy()
             bins[0] -= 0.001
             digitized = np.digitize(column, bins, right = True)
-            if not self._label_mode == "ordinal":
+            if not self.label_mode == "ordinal":
                 digitized = self.names_[i][digitized -1]
-            X2.append(digitized)
+                Xt[:,i] = digitized
         
-        X2 = np.array(X2).T
-        if isinstance(X,pd.core.frame.DataFrame):
-            X2 = pd.DataFrame(X2,columns=X.columns)
-        return X2
-    
-    def fit_transform(self, X, y=None, *args, **kwargs):
-        self = self.fit(X)
-        return self.transform(X)
+        return Xt
