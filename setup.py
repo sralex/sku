@@ -7,7 +7,7 @@ setup(name='sku',
       author='A Maldonado',
       license='MIT',
       packages=['sku'],
-      python_requires='>=3.7',
+      python_requires='>=3.6.9',
       install_requires=[
           'scikit-learn>=0.23.1',
           'numpy>=1.19.1',
