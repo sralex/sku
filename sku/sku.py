@@ -73,6 +73,14 @@ class NKBinsDiscretizer(BaseEstimator,TransformerMixin):
         self.strategy = strategy
         self.label_mode = label_mode
 
+
+    def iterator_pd_np(self, x):
+        if isinstance(x,pd.core.frame.DataFrame):
+            for column in x:
+                yield x.loc[:,column]
+        else:
+            for column in x.T:
+                yield column
        
     def fit(self, X, y=None, *args, **kwargs):
 
@@ -114,15 +122,17 @@ class NKBinsDiscretizer(BaseEstimator,TransformerMixin):
         
         check_is_fitted(self)
         
-        Xt = check_array(X, copy=True, dtype=object, force_all_finite=False)
+        #X = self._validate_data(X, dtype='numeric', force_all_finite=False)
         
-        for i in range(X.shape[1]):
-            column = X[:,i]
+        Xt = check_array(X, copy=True, dtype=object, force_all_finite=False)
+
+        for i in range(Xt.shape[1]):
+            column = Xt[:,i]
             bins = self.bins_[i].copy()
             bins[0] -= 0.001
             digitized = np.digitize(column, bins, right = True)
             if not self.label_mode == "ordinal":
                 digitized = self.names_[i][digitized -1]
-                Xt[:,i] = digitized
+            Xt[:,i] = digitized
         
         return Xt

@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name='sku',
-      version='0.2.2',
+      version='0.2.3',
       description='This project only contains one function to extract the features from a pipeline in sklearn',
       url='',
       author='A Maldonado',
