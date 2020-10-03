@@ -9,7 +9,6 @@ import numpy as np
 # inspired on
 # https://stackoverflow.com/questions/57528350/can-you-consistently-keep-track-of-column-labels-using-sklearns-transformer-api
 def get_feature_names(transformer):
-    feature_names_in = transformer.feature_names_in
     output_features = {}
     for name, estimator, features in transformer.transformers_:
         if name != "remainder":
@@ -55,8 +54,6 @@ def get_feature_names(transformer):
                             features = []
                             for i in range(len(old_features)):
                                 features += ['KBin_{}_{}'.format(f,old_features[i]) for f in step.bin_edges_[i][0:-1]]
-        elif estimator == 'passthrough':
-            features = feature_names_in[features]
         elif estimator == 'drop':
             features = []
         current_features = {f: None for f in features}
