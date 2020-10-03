@@ -114,7 +114,7 @@ class NKBinsDiscretizer(BaseEstimator,TransformerMixin):
         
         check_is_fitted(self)
         
-        Xt = check_array(X, copy=True, dtype=object)
+        Xt = check_array(X, copy=True, dtype=object, force_all_finite=False)
         
         for i in range(X.shape[1]):
             column = X[:,i]
