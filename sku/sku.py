@@ -65,19 +65,11 @@ def get_feature_names(transformer):
 class NKBinsDiscretizer(BaseEstimator,TransformerMixin):
 
     @_deprecate_positional_args
-    def __init__(self,n_bins = 5, strategy = "uniform", label_mode = "range"):
+    def __init__(self, n_bins = 5, strategy = "uniform", label_mode = "range"):
         self.n_bins = n_bins
         self.strategy = strategy
         self.label_mode = label_mode
 
-
-    def iterator_pd_np(self, x):
-        if isinstance(x,pd.core.frame.DataFrame):
-            for column in x:
-                yield x.loc[:,column]
-        else:
-            for column in x.T:
-                yield column
        
     def fit(self, X, y=None, *args, **kwargs):
 
@@ -99,22 +91,41 @@ class NKBinsDiscretizer(BaseEstimator,TransformerMixin):
 
         self.bins_ = {}
         self.names_ = {}
-        self.n_bins_ = self.n_bins + 1 if self.n_bins != None else 6
 
-        for i in range(X.shape[1]):
+        n_columns = X.shape[1]
+
+        self.n_bins_ = self._validate_bins(self.n_bins,n_columns)
+
+        for i in range(n_columns):
             column = X[:,i]
             is_nan = np.isnan(column)
             not_nan_array = column[~is_nan]
+
+
+            n_bins = self.n_bins_[i]
+
             if self.strategy == "uniform":
-                self.bins_[i] = np.linspace(not_nan_array.min(), not_nan_array.max(), self.n_bins_)
+                self.bins_[i] = np.linspace(not_nan_array.min(), not_nan_array.max(), n_bins) if type(n_bins) != list else n_bins
             else:
-                self.bins_[i] = np.unique(np.percentile(not_nan_array,np.linspace(0, 100, self.n_bins_)))
+                # TODO: catch error when n_bins is a list
+                self.bins_[i] = np.unique(np.percentile(not_nan_array,np.linspace(0, 100, n_bins)))
                 
             self.names_[i] = ["[{} - {})".format(a,b) for a,b in zip(self.bins_[i][:-1],self.bins_[i][1:])]
 
             self.names_[i] = np.array(self.names_[i] + ["nan"] if is_nan.sum() > 0 else self.names_[i])
         return self
-    
+   
+
+    def _validate_bins(self,bins,n_columns):
+        if type(bins) != list:
+            bins = [bins + 1] * n_columns
+        else:
+            if len(bins) != n_columns:
+                raise ValueError("Bins length {} is different to columns length ({})."
+                                 .format(len(bins), n_columns))
+        return bins
+
+
     def transform(self, X, y=None, *args, **kwargs):
         
         check_is_fitted(self)
