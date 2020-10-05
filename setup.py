@@ -10,7 +10,7 @@ setup(name='sku',
       python_requires='>=3.6.9',
       install_requires=[
           'scikit-learn>=0.23.1',
-          'numpy>=1.19.1',
+          'numpy>=1.18.5',
           'pandas>=1.1.0',
       ],
       zip_safe=False)
